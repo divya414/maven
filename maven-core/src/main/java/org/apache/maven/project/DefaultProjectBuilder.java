@@ -130,17 +130,13 @@ public class DefaultProjectBuilder implements ProjectBuilder {
 
     @Override
     public ProjectBuildingResult build(File pomFile, ProjectBuildingRequest request) throws ProjectBuildingException {
-        try (BuildSession bs = new BuildSession(request, false)) {
-            return bs.build(pomFile, new FileModelSource(pomFile));
-        }
+        return new BuildSession(request, false).build(pomFile, new FileModelSource(pomFile));
     }
 
     @Override
     public ProjectBuildingResult build(ModelSource modelSource, ProjectBuildingRequest request)
             throws ProjectBuildingException {
-        try (BuildSession bs = new BuildSession(request, false)) {
-            return bs.build(null, modelSource);
-        }
+        return new BuildSession(request, false).build(null, modelSource);
     }
 
     @Override
@@ -152,17 +148,13 @@ public class DefaultProjectBuilder implements ProjectBuilder {
     @Override
     public ProjectBuildingResult build(Artifact artifact, boolean allowStubModel, ProjectBuildingRequest request)
             throws ProjectBuildingException {
-        try (BuildSession bs = new BuildSession(request, false)) {
-            return bs.build(artifact, allowStubModel);
-        }
+        return new BuildSession(request, false).build(artifact, allowStubModel);
     }
 
     @Override
     public List<ProjectBuildingResult> build(List<File> pomFiles, boolean recursive, ProjectBuildingRequest request)
             throws ProjectBuildingException {
-        try (BuildSession bs = new BuildSession(request, true)) {
-            return bs.build(pomFiles, recursive);
-        }
+        return new BuildSession(request, true).build(pomFiles, recursive);
     }
 
     static class InterimResult {
@@ -202,7 +194,7 @@ public class DefaultProjectBuilder implements ProjectBuilder {
         }
     }
 
-    class BuildSession implements AutoCloseable {
+    class BuildSession {
         private final ProjectBuildingRequest request;
         private final RepositorySystemSession session;
         private final List<RemoteRepository> repositories;
@@ -215,19 +207,15 @@ public class DefaultProjectBuilder implements ProjectBuilder {
             this.session =
                     RepositoryUtils.overlay(request.getLocalRepository(), request.getRepositorySession(), repoSystem);
             this.repositories = RepositoryUtils.toRepos(request.getRemoteRepositories());
-            this.forkJoinPool = new ForkJoinPool(getParallelism(request));
             if (localProjects) {
                 this.modelPool = new ReactorModelPool();
                 this.transformerContextBuilder = modelBuilder.newTransformerContextBuilder();
+                this.forkJoinPool = new ForkJoinPool(getParallelism(request));
             } else {
                 this.modelPool = null;
                 this.transformerContextBuilder = null;
+                this.forkJoinPool = null;
             }
-        }
-
-        @Override
-        public void close() {
-            this.forkJoinPool.shutdownNow();
         }
 
         private int getParallelism(ProjectBuildingRequest request) {
